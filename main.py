@@ -1,14 +1,13 @@
-from chattyParser import *
 import re
 
-class ParseError(Exception):
-    pass
+#class ParseError(Exception):
+#    pass
 
 stringa = "a & b"
 
 stringb = "a | b | c"
 
-stringc = "a&((b)|c)"
+stringc = "a&(b|c)"
 
 stringd = "(a&b)|(b&c)"
 
@@ -74,7 +73,7 @@ class HPCParsing:
         """
         self.tokens = re.findall(token_spec, expression, re.VERBOSE)
         if "".join(self.tokens).replace(" ", "") != expression.replace(" ", ""):
-            raise ParseError("Invalid characters in expression")
+            raise Exception("Invalid characters in expression")
     
     #Returns next item if it exists
     def peek(self):
@@ -86,80 +85,87 @@ class HPCParsing:
         return self.getTokens
     
     #Increments program
-    def consume(self):
-        if self.pos < len(self.tokens):
-            self.pos+=1
+    def consume(self, expectedToken=None):
+        if self.pos >= len(self.tokens):
+            raise Exception("Input ended unexpectedly")
+        if expectedToken and self.peek() != expectedToken:
+            raise Exception("Expected " + str(expectedToken) + ", got " + self.peek())
+        self.pos+=1
+
         
     #Parse expression
     #OUT - list
     def parse(self):
         self.pos = 0
         parsedEx = []
-        parsedEx.extend(self.parseOperator())
+        parsedEx.extend(self.parseOr())
         if self.peek() is not None:
-            raise ParseError("Unexpected token at:" + str(self.peek()))
+            raise Exception("Unexpected token at:" + str(self.peek()))
 
         return parsedEx
     
-    #Parse operators
+    #Parse or
+    #OR :=	AND (“|” AND)*
     #OUT - list
-    def parseOperator(self):
+    def parseOr(self):
+        parsedEx = self.parseAnd()
+
+        while self.peek() == "|":
+            parsedEx.extend(self.peek())
+            self.consume("|")
+            parsedEx.extend(self.parseAnd())
+
+        return parsedEx
+
+    #Parse and
+    #AND :=	TERM (“&” TERM)*
+    #OUT - list
+    def parseAnd(self):
         parsedEx = self.parseTerm()
 
-        while self.peek() in "|&":
+        while self.peek() == "&":
             parsedEx.extend(self.peek())
-            self.consume()
+            self.consume("&")
             parsedEx.extend(self.parseTerm())
-            if self.peek() == None:
-                break
 
         return parsedEx
     
     #Parse terms
+    #TERM := ID | “(“EPRESSION”)”
     #OUT - list
     def parseTerm(self):
         parsedEx = []
         nextToken = self.peek()
         
         if nextToken == "(":
-            self.consume()
-            parsedEx.extend([self.parseOperator()])
-            self.consume()
+            self.consume("(")
+            parsedEx.extend([self.parseOr()])
+            self.consume(")")
             return parsedEx
         elif nextToken not in ")|&":
             self.consume()
             parsedEx.append(nextToken)
             return parsedEx
 
-        raise ParseError("Unexpected token at end, expected a term, got "+str(nextToken))
+        raise Exception("Unexpected token at end, expected a term, got "+str(nextToken))
         
+
+
+
 def HPCTokenizer(expression):
     parser = HPCParsing(expression)
-    p = parser.getTokens()
-    return p
+    t = parser.getTokens()
+    return t
 
 def HPCParser(expression):
-    #print("-")
-    #print("EXPRESSION"+ str(expression))
-    #print("TOKENIZED"+str(tokenize(expression)))
     parser = HPCParsing(expression)
-    #print("RESULT")
     p = parser.parse()
-    #print(p)
-    #print("END")
     return p
+
+
 
 if __name__ == '__main__':
     print(HPCParser(stringa))
     print(HPCParser(stringb))
     print(HPCParser(stringc))
     print(HPCParser(stringd))
-    print(HPCParser("apple&banana"))
-    #print(tokenize("apple&banana"))
-
-    #print(HPCParser("((a)&bad)|(b&(c|d))")[0])
-    #print(bracketParser("((a)&bad)|(b&(c|d))")[0])
-    #print("Chatty")
-    #print(parse_expression("(aa&bb)|(b&c)"))
-    #print(parse_expression('('*3 + "a&b" + ')'*3))
-    #print(parse_expression('('*2000 + "a&"*1000 + "a" + ')'*2000))
