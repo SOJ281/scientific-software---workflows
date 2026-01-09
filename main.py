@@ -1,15 +1,20 @@
+from chattyParser import *
+import re
 
+class ParseError(Exception):
+    pass
 
-stringa = "a & b)"
+stringa = "a & b"
 
 stringb = "a | b | c"
 
 stringc = "a&((b)|c)"
 
-stringd = "(a&b)||(b&c)"
+stringd = "(a&b)|(b&c)"
 
-
+'''
 def HPCParser(expression):
+    expression = expression.replace(" ", "")
     parsedEx = []
     loc = 0
     if expression[0] in "|&" or expression[-1] in "|&":
@@ -41,16 +46,13 @@ def HPCParser(expression):
                 return "error, two logic operators can't be together", -1
             parsedEx.append(expression[loc])
 
-        elif expression[loc] == " ":
-            exit
-
         elif expression[loc] == ")":
             return "Error, unclosed brackets", -1
         
         else:
             exLen = 1
             while (loc+exLen < len(expression)):
-                if (expression[loc+exLen] in "|&() "):
+                if (expression[loc+exLen] in "|&()"):
                     break
                 exLen+=1
             parsedEx.append(expression[loc:loc+exLen])
@@ -58,55 +60,106 @@ def HPCParser(expression):
         loc+=1
 
     return parsedEx, loc 
+'''
 
 
+class HPCParsing:
+    #tokenizes the expression
+    def __init__(self, expression: str):
+        token_spec = r"""
+            \s*(
+                [A-Za-z_][A-Za-z0-9_]* |   # identifier
+                [&|()]                    # operators and parentheses
+            )
+        """
+        self.tokens = re.findall(token_spec, expression, re.VERBOSE)
+        if "".join(self.tokens).replace(" ", "") != expression.replace(" ", ""):
+            raise ParseError("Invalid characters in expression")
+    
+    #Returns next item if it exists
+    def peek(self):
+        if self.pos < len(self.tokens):
+            return self.tokens[self.pos]
+        return None
+    
+    def getTokens(self):
+        return self.getTokens
+    
+    #Increments program
+    def consume(self):
+        if self.pos < len(self.tokens):
+            self.pos+=1
+        
+    #Parse expression
+    #OUT - list
+    def parse(self):
+        self.pos = 0
+        parsedEx = []
+        parsedEx.extend(self.parseOperator())
+        if self.peek() is not None:
+            raise ParseError("Unexpected token at:" + str(self.peek()))
 
+        return parsedEx
+    
+    #Parse operators
+    #OUT - list
+    def parseOperator(self):
+        parsedEx = self.parseTerm()
 
+        while self.peek() in "|&":
+            parsedEx.extend(self.peek())
+            self.consume()
+            parsedEx.extend(self.parseTerm())
+            if self.peek() == None:
+                break
 
-def bracketParser(expression):
-    parsedEx = []
-    loc = 0
+        return parsedEx
+    
+    #Parse terms
+    #OUT - list
+    def parseTerm(self):
+        parsedEx = []
+        nextToken = self.peek()
+        
+        if nextToken == "(":
+            self.consume()
+            parsedEx.extend([self.parseOperator()])
+            self.consume()
+            return parsedEx
+        elif nextToken not in ")|&":
+            self.consume()
+            parsedEx.append(nextToken)
+            return parsedEx
 
-    while loc < len(expression):
-        if expression[loc] == "(":
-            ex, miniLoc = bracketParser(expression[loc+1:-1])
-            parsedEx.append(ex)
-            loc += miniLoc
-        elif expression[loc] == ")":
-            return parsedEx, loc+1
-        else:
-            parsedEx.append(str(expression[loc]))
-        loc+=1
+        raise ParseError("Unexpected token at end, expected a term, got "+str(nextToken))
+        
+def HPCTokenizer(expression):
+    parser = HPCParsing(expression)
+    p = parser.getTokens()
+    return p
 
-    return parsedEx, loc 
+def HPCParser(expression):
+    #print("-")
+    #print("EXPRESSION"+ str(expression))
+    #print("TOKENIZED"+str(tokenize(expression)))
+    parser = HPCParsing(expression)
+    #print("RESULT")
+    p = parser.parse()
+    #print(p)
+    #print("END")
+    return p
 
-def logicParser(expression):
-    parsedEx = []
-    loc = 0
+if __name__ == '__main__':
+    print(HPCParser(stringa))
+    print(HPCParser(stringb))
+    print(HPCParser(stringc))
+    print(HPCParser(stringd))
+    print(HPCParser("apple&banana"))
+    #print(tokenize("apple&banana"))
 
-    while loc < len(expression):
-        if expression[loc] == "(":
-            ex, miniLoc = bracketParser(expression[loc+1:-1])
-            parsedEx.append(ex)
-            loc += miniLoc
-        elif expression[loc] == ")":
-            return parsedEx, loc+1
-        else:
-            parsedEx.append(expression[loc])
-        loc+=1
-
-    while loc < len(expression):
-        if type(expression[loc]) != str:
-            expression[loc] = logicParser(expression[loc])
-        else:
-            exp = []
-
-
-
-    return parsedEx, loc 
-
-print(HPCParser(stringa))
-print(HPCParser(stringb))
-print(HPCParser(stringc))
-print(HPCParser(stringd))
-print(bracketParser("((a)&b)|(b&(c|d))"))
+    #print(HPCParser("((a)&bad)|(b&(c|d))")[0])
+    #print(bracketParser("((a)&bad)|(b&(c|d))")[0])
+    #print("Chatty")
+    #print(parse_expression("(aa&bb)|(b&c)"))
+    #print(parse_expression('('*3 + "a&b" + ')'*3))
+    #print(parse_expression('('*2000 + "a&"*1000 + "a" + ')'*2000))
