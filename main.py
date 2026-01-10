@@ -3,13 +3,6 @@ import re
 #class ParseError(Exception):
 #    pass
 
-stringa = "a & b"
-
-stringb = "a | b | c"
-
-stringc = "a&(b|c)"
-
-stringd = "(a&b)|(b&c)"
 
 '''
 def HPCParser(expression):
@@ -65,6 +58,7 @@ def HPCParser(expression):
 class HPCParsing:
     #tokenizes the expression
     def __init__(self, expression: str):
+        self.expression = expression
         token_spec = r"""
             \s*(
                 [A-Za-z_][A-Za-z0-9_]* |   # identifier
@@ -82,18 +76,22 @@ class HPCParsing:
         return None
     
     def getTokens(self):
-        return self.getTokens
+        return self.tokens
+    
+    def getExpression(self):
+        return self.expression
     
     #Increments program
     def consume(self, expectedToken=None):
+        if expectedToken and self.peek() != expectedToken:
+            raise Exception("Expected " + str(expectedToken) + ", got " + str(self.peek()))
         if self.pos >= len(self.tokens):
             raise Exception("Input ended unexpectedly")
-        if expectedToken and self.peek() != expectedToken:
-            raise Exception("Expected " + str(expectedToken) + ", got " + self.peek())
         self.pos+=1
 
         
     #Parse expression
+    #Expression :=  OR
     #OUT - list
     def parse(self):
         self.pos = 0
@@ -163,8 +161,12 @@ def HPCParser(expression):
     return p
 
 
-
 if __name__ == '__main__':
+    stringa = "a & b"
+    stringb = "a | b | c"
+    stringc = "a&(b|c)"
+    stringd = "(a&b|(b&c)"
+    
     print(HPCParser(stringa))
     print(HPCParser(stringb))
     print(HPCParser(stringc))
